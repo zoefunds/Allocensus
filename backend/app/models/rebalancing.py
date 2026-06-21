@@ -21,7 +21,7 @@ class RebalancingProposal(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     portfolio_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("portfolios.id", ondelete="CASCADE"), nullable=False)
     submitted_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    status: Mapped[ProposalStatus] = mapped_column(SAEnum(ProposalStatus), nullable=False, default=ProposalStatus.DRAFT)
+    status: Mapped[ProposalStatus] = mapped_column(SAEnum(ProposalStatus, values_callable=lambda x: [e.value for e in x]), nullable=False, default=ProposalStatus.DRAFT)
 
     current_allocations: Mapped[dict] = mapped_column(JSON, nullable=False)
     proposed_allocations: Mapped[dict] = mapped_column(JSON, nullable=False)

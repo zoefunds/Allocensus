@@ -25,7 +25,7 @@ async def log_event(
         resource_id=resource_id,
         ip_address=ip_address,
         user_agent=user_agent,
-        metadata=metadata or {},
+        event_metadata=metadata or {},
         on_chain_ref=on_chain_ref,
     )
     db.add(event)

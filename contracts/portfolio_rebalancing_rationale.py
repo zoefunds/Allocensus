@@ -24,16 +24,48 @@ import json
 
 # ─── CONSTRAINT CONSTANTS ────────────────────────────────────────────────────
 
-MAX_SINGLE_ASSET_PCT     = 30.0
-MAX_SINGLE_CLASS_PCT     = 60.0
-MIN_LIQUIDITY_PCT        = 5.0
-MAX_ILLIQUID_PCT         = 25.0
-MIN_ASSET_CLASSES        = 3
+MAX_SINGLE_ASSET_PCT     = 70.0   # single position cap (generous for broad asset classes)
+MAX_SINGLE_CLASS_PCT     = 80.0   # single asset-class cap
+MIN_LIQUIDITY_PCT        = 2.0    # minimum cash/stablecoin reserve
+MAX_ILLIQUID_PCT         = 40.0   # max illiquid exposure
+MIN_ASSET_CLASSES        = 2      # minimum distinct asset classes
 MAX_DEFI_PROTOCOL_PCT    = 15.0
 MAX_LEVERAGE             = 0.0
 
-ILLIQUID_CLASSES = {"defi_protocols", "tokenised_rwa"}
-LIQUID_CLASSES   = {"stablecoins", "cash"}
+ILLIQUID_CLASSES = {"defi_protocols", "tokenised_rwa", "alternatives", "real_estate"}
+LIQUID_CLASSES   = {"stablecoins", "cash", "Cash", "fixed_income"}
+
+# ─── ASSET CLASS INFERENCE MAP ───────────────────────────────────────────────
+# Maps common display names → canonical class. Applied when caller passes empty
+# asset_classes dict (e.g. proposals created with broad allocation labels).
+INFERRED_CLASSES = {
+    # Equities
+    "equities": "equities", "equity": "equities", "stocks": "equities",
+    "Equities": "equities", "Equity": "equities", "Stocks": "equities",
+    # Fixed income
+    "fixed income": "fixed_income", "fixed_income": "fixed_income",
+    "bonds": "fixed_income", "bond": "fixed_income",
+    "Fixed Income": "fixed_income", "Bonds": "fixed_income",
+    # Cash / stablecoins
+    "cash": "cash", "Cash": "cash",
+    "stablecoins": "stablecoins", "Stablecoins": "stablecoins",
+    "money market": "cash", "Money Market": "cash",
+    # Alternatives
+    "alternatives": "alternatives", "Alternatives": "alternatives",
+    "alternative": "alternatives", "Alternative": "alternatives",
+    # Real estate
+    "real estate": "real_estate", "Real Estate": "real_estate",
+    "reits": "real_estate", "REITs": "real_estate",
+    # Commodities
+    "commodities": "commodities", "Commodities": "commodities",
+    "commodity": "commodities", "Commodity": "commodities",
+    # Crypto
+    "crypto": "cryptocurrencies", "Crypto": "cryptocurrencies",
+    "cryptocurrencies": "cryptocurrencies", "bitcoin": "cryptocurrencies",
+    "BTC": "cryptocurrencies", "ETH": "cryptocurrencies",
+    # DeFi
+    "defi": "defi_protocols", "DeFi": "defi_protocols",
+}
 
 RISK_PROFILES = {
     "conservative":    {"max_crypto_pct": 20.0,  "max_equity_pct": 40.0, "min_fixed_income_pct": 20.0},
@@ -271,6 +303,14 @@ class PortfolioRebalancingRationale(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] Proposed portfolio is empty.")
         if not current:
             raise gl.vm.UserError("[EXPECTED] Current portfolio is empty.")
+
+        # ── Infer missing asset classes from well-known display names ─────────
+        if not classes:
+            classes = {}
+        all_symbols = set(list(current.keys()) + list(proposed.keys()))
+        for sym in all_symbols:
+            if sym not in classes:
+                classes[sym] = INFERRED_CLASSES.get(sym, "unknown")
 
         # ── Deterministic constraint pre-check ────────────────────────────────
         constraint_result  = self._check_all_constraints(proposed, classes)

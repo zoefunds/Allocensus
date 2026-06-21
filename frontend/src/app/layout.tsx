@@ -10,11 +10,19 @@ export const metadata: Metadata = {
   title: { default: "Allocensus — AI-Validated Portfolio Rebalancing", template: "%s | Allocensus" },
   description: "Institutional-grade portfolio rebalancing intelligence powered by Genlayer AI validators. Transparent, auditable, defensible investment rationale on-chain.",
   keywords: ["portfolio rebalancing", "AI", "institutional", "Genlayer", "blockchain", "investment"],
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+    apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
+  },
   openGraph: {
     type: "website",
     siteName: "Allocensus",
     title: "Allocensus — AI-Validated Portfolio Rebalancing",
     description: "Transparent, on-chain investment rationale for institutional portfolios.",
+    images: [{ url: "/logo.png" }],
   },
 };
 

@@ -4,12 +4,19 @@ from sqlalchemy import DateTime, func
 from datetime import datetime
 from app.config import settings
 
+_db_url = settings.async_database_url
+_connect_args: dict = {}
+if "sslmode=disable" in _db_url or "flycast" in _db_url:
+    _db_url = _db_url.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
+    _connect_args["ssl"] = False
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _db_url,
     echo=settings.DEBUG,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
+    connect_args=_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(

@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.config import settings
 import structlog
@@ -24,13 +25,35 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_cors_origins = settings.cors_origins
+# Always include the production frontend even if env var is misconfigured
+_REQUIRED_ORIGINS = ["https://allocensus.vercel.app"]
+for _o in _REQUIRED_ORIGINS:
+    if _o not in _cors_origins:
+        _cors_origins.append(_o)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in _cors_origins:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    log.error("unhandled_exception", path=request.url.path, error=str(exc))
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers=headers,
+    )
 
 if settings.SENTRY_DSN:
     import sentry_sdk
@@ -40,7 +63,7 @@ if settings.SENTRY_DSN:
 from app.routers import auth, users, portfolios, rebalancing, audit, admin, health
 from app.routers.export import router as export_router
 
-app.include_router(health.router,      prefix="/api/health",      tags=["Health"])
+app.include_router(health.router,      prefix="/api",             tags=["Health"])
 app.include_router(auth.router,        prefix="/api/auth",        tags=["Auth"])
 app.include_router(users.router,       prefix="/api/users",       tags=["Users"])
 app.include_router(portfolios.router,  prefix="/api/portfolios",  tags=["Portfolios"])

@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { portfolioAPI, rebalancingAPI } from "@/lib/api";
-import { formatCurrency, statusColor, statusLabel } from "@/lib/utils";
+import { formatCurrency, statusLabel } from "@/lib/utils";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";

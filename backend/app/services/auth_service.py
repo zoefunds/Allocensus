@@ -26,13 +26,13 @@ async def register_user(req: RegisterRequest, db: AsyncSession) -> TokenResponse
         email=req.email,
         hashed_password=hashed,
         full_name=req.full_name,
-        role=UserRole.ANALYST,
+        role=UserRole.PORTFOLIO_MANAGER,
         email_verification_token=verification_token,
     )
     db.add(user)
     await db.flush()
 
-    wallet = await create_wallet_for_user(user, hashed, db)
+    wallet = await create_wallet_for_user(user, hashed, db, plain_password=req.password)
     await db.flush()
 
     await send_verification_email(user.email, verification_token)

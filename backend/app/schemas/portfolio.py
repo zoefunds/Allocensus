@@ -42,6 +42,9 @@ class PortfolioCreate(BaseModel):
     name: str
     description: Optional[str] = None
     currency: str = "USD"
+    aum: Optional[float] = None
+    investor_profile: Optional[str] = None      # e.g. "balanced"
+    allowed_asset_classes: Optional[List[str]] = None
     investor_profile_id: Optional[uuid.UUID] = None
     assets: List[AssetIn] = []
 

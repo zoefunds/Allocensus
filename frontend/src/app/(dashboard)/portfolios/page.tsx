@@ -5,7 +5,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-import { Plus, Briefcase, TrendingUp, ArrowRight } from "lucide-react";
+import { Plus, Briefcase, ArrowRight } from "lucide-react";
 import type { Portfolio } from "@/types";
 
 export default function PortfoliosPage() {

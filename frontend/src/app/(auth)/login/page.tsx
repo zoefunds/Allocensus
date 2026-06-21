@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Zap, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { authAPI } from "@/lib/api";
@@ -26,7 +27,7 @@ export default function LoginPage() {
     try {
       const res = await authAPI.login(data);
       const d = res.data;
-      setAuth({ id: d.user_id, email: data.email, full_name: "", role: d.role, is_active: true, is_email_verified: true, wallet_address: d.wallet_address, created_at: "" }, d.access_token, d.refresh_token, d.wallet_address);
+      setAuth({ id: d.user_id, email: data.email, full_name: "", role: d.role, is_active: true, is_email_verified: true, wallet_address: d.wallet_address, created_at: "" }, d.access_token, d.refresh_token, d.wallet_address, data.password);
       router.push("/dashboard");
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Login failed";
@@ -40,9 +41,7 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
           <div className="flex items-center gap-2.5 mb-10">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-emerald-400" />
-            </div>
+            <Image src="/logo.png" alt="Allocensus" width={32} height={32} className="rounded-lg" />
             <span className="text-sm font-bold tracking-tight">ALLOCENSUS</span>
           </div>
           <h1 className="text-2xl font-bold mb-2">Welcome back</h1>

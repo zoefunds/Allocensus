@@ -30,7 +30,7 @@ async def get_audit_events(
             "resource_id": e.resource_id,
             "ip_address": e.ip_address,
             "on_chain_ref": e.on_chain_ref,
-            "metadata": e.metadata,
+            "metadata": e.event_metadata,
             "created_at": e.created_at.isoformat(),
         }
         for e in events

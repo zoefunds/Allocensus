@@ -8,7 +8,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SubmitToGenlayerModal } from "@/components/rebalancing/SubmitToGenlayerModal";
-import { FileText, Download, Zap, CheckCircle2, XCircle, ArrowLeft, ExternalLink, AlertTriangle } from "lucide-react";
+import { FileText, Download, Zap, CheckCircle2, XCircle, ArrowLeft, ExternalLink, AlertTriangle, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 function statusVariant(s: string): "success"|"danger"|"warning"|"info"|"default" {
@@ -46,6 +46,16 @@ export default function ProposalDetailPage() {
     try { const r = await rebalancingAPI.exportCsv(id); downloadBlob(r.data, `allocensus-${id.slice(0,8)}.csv`); }
     catch { toast.error("CSV export failed"); }
   };
+  const handleDelete = async () => {
+    if (!confirm("Delete this proposal? This cannot be undone.")) return;
+    try {
+      await rebalancingAPI.delete(id);
+      toast.success("Proposal deleted");
+      qc.invalidateQueries({ queryKey: ["proposals"] });
+      router.push("/rebalancing");
+    } catch { toast.error("Failed to delete proposal"); }
+  };
+
   const handleSuccess = (approved: boolean) => {
     toast.success(approved ? "Proposal approved!" : "Proposal rejected");
     qc.invalidateQueries({ queryKey: ["proposal", id] });
@@ -65,8 +75,7 @@ export default function ProposalDetailPage() {
   const isApproved = proposal.status === "approved";
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="ml-64 p-8 space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-5 h-5" /></button>
@@ -81,7 +90,12 @@ export default function ProposalDetailPage() {
               <Button variant="secondary" size="sm" onClick={handleExportCsv}><Download className="w-3.5 h-3.5" /> CSV</Button>
               <Button variant="secondary" size="sm" onClick={handleExportPdf}><FileText className="w-3.5 h-3.5" /> PDF</Button>
             </>}
-            {isDraft && <Button onClick={() => setShowModal(true)}><Zap className="w-4 h-4" />Submit to Genlayer</Button>}
+            {isDraft && <>
+              <Button onClick={() => setShowModal(true)}><Zap className="w-4 h-4" />Submit to Genlayer</Button>
+            </>}
+            {(isDraft || isPending) && (
+              <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
+            )}
             {isPending && <Button variant="secondary" disabled>
               <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
               Awaiting Consensus
@@ -94,7 +108,7 @@ export default function ProposalDetailPage() {
             <ExternalLink className="w-3.5 h-3.5" />
             <span>On-chain TX:</span>
             <code className="font-mono text-emerald-400">{proposal.genlayer_tx_hash}</code>
-            <a href={`https://studio.genlayer.com/tx/${proposal.genlayer_tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">View on explorer ↗</a>
+            <a href={`https://explorer-studio.genlayer.com/tx/${proposal.genlayer_tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300">View on explorer ↗</a>
           </div>
         )}
 
@@ -217,8 +231,6 @@ export default function ProposalDetailPage() {
             </div>
           </Card>
         )}
-      </main>
-
       {showModal && (
         <SubmitToGenlayerModal proposalId={id} onClose={() => setShowModal(false)} onSuccess={handleSuccess} />
       )}

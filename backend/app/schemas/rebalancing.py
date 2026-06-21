@@ -20,6 +20,7 @@ class MarketContext(BaseModel):
 
 class ProposalCreate(BaseModel):
     portfolio_id: uuid.UUID
+    current_allocations: Optional[Dict[str, float]] = None  # override if portfolio has no assets
     proposed_allocations: Dict[str, float]
     market_context: MarketContext = MarketContext()
     notes: Optional[str] = None

@@ -1,14 +1,20 @@
 "use client";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { DashboardNav } from "@/components/layout/DashboardNav";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
-  useEffect(() => { if (!isAuthenticated) router.push("/login"); }, [isAuthenticated, router]);
-  if (!isAuthenticated) return null;
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => { setHydrated(true); }, []);
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) router.push("/login");
+  }, [hydrated, isAuthenticated, router]);
+
+  if (!hydrated) return null;
   return (
     <div className="min-h-screen bg-background">
       <DashboardNav />

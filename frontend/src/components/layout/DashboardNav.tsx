@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn, formatAddress } from "@/lib/utils";
 import { useAuthStore } from "@/stores/auth";
 import {
   LayoutDashboard, Briefcase, RefreshCw, FileText,
-  Shield, Settings, LogOut, ChevronRight, Zap
+  Shield, Settings, LogOut, ChevronRight,
 } from "lucide-react";
 
 const nav = [
@@ -28,9 +29,7 @@ export function DashboardNav() {
       {/* Logo */}
       <div className="p-6 border-b border-border">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-emerald-400" />
-          </div>
+          <Image src="/logo.png" alt="Allocensus" width={36} height={36} className="rounded-xl" />
           <div>
             <div className="text-sm font-bold text-foreground tracking-tight">ALLOCENSUS</div>
             <div className="text-xs text-muted-foreground">StudioNet</div>

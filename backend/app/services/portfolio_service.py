@@ -28,6 +28,7 @@ async def create_portfolio(req: PortfolioCreate, user_id: uuid.UUID, db: AsyncSe
         description=req.description,
         currency=req.currency,
         investor_profile_id=req.investor_profile_id,
+        total_value_usd=req.aum or 0.0,
     )
     db.add(portfolio)
     await db.flush()
@@ -43,13 +44,17 @@ async def create_portfolio(req: PortfolioCreate, user_id: uuid.UUID, db: AsyncSe
         )
         db.add(asset)
 
-    portfolio.total_value_usd = total_value
+    # Only override AUM with computed value if assets were provided
+    if req.assets:
+        portfolio.total_value_usd = total_value
     await db.flush()
 
+    # Build allocations from the in-memory list (avoids lazy-load in async context)
+    allocations = {a_in.symbol: a_in.target_weight_pct for a_in in req.assets}
     snapshot = PortfolioSnapshot(
         portfolio_id=portfolio.id,
         total_value_usd=total_value,
-        allocations={a.symbol: a.target_weight_pct for a in portfolio.assets},
+        allocations=allocations,
     )
     db.add(snapshot)
     return portfolio

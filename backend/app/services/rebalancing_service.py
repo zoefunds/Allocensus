@@ -27,7 +27,10 @@ async def create_proposal(req: ProposalCreate, user: User, db: AsyncSession) -> 
         raise HTTPException(status_code=404, detail="Portfolio not found")
 
     current_allocs = {a.symbol: a.current_weight_pct for a in portfolio.assets}
-    asset_classes  = {a.symbol: a.asset_class for a in portfolio.assets}
+    # Allow caller to supply current allocations when portfolio has no assets yet
+    if not current_allocs and req.current_allocations:
+        current_allocs = req.current_allocations
+    asset_classes = {a.symbol: a.asset_class for a in portfolio.assets}
     violations     = validate_portfolio_constraints(req.proposed_allocations, asset_classes)
     market_ctx     = await get_market_context()
     if req.market_context:

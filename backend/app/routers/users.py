@@ -47,7 +47,7 @@ async def get_wallet(user: CurrentUser, db: DB):
 
     return {
         "address":      wallet.address,
-        "chain":        wallet.chain,
+        "chain_id":     wallet.chain_id,
         "keystore_json": keystore_json,
         "created_at":   wallet.created_at.isoformat(),
     }

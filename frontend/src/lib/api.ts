@@ -67,6 +67,7 @@ export const rebalancingAPI = {
     api.post(`/api/rebalancing/${id}/confirm-tx`, { tx_hash }),
   pollResult:   (id: string) => api.post(`/api/rebalancing/${id}/poll-result`),
   getRationale: (id: string) => api.get(`/api/rebalancing/${id}/rationale`),
+  delete:       (id: string) => api.delete(`/api/rebalancing/${id}`),
   exportPdf:    (id: string) =>
     api.get(`/api/rebalancing/${id}/export/pdf`, { responseType: "blob" }),
   exportCsv:    (id: string) =>

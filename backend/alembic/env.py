@@ -19,9 +19,20 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-DATABASE_URL = os.getenv("DATABASE_URL_SYNC") or os.getenv("DATABASE_URL", "").replace(
-    "postgresql+asyncpg://", "postgresql://"
-)
+_raw_url = os.getenv("DATABASE_URL", "")
+# Normalize to postgresql+asyncpg:// for async engine
+if _raw_url.startswith("postgres://"):
+    _raw_url = "postgresql+asyncpg://" + _raw_url[len("postgres://"):]
+elif _raw_url.startswith("postgresql://"):
+    _raw_url = "postgresql+asyncpg://" + _raw_url[len("postgresql://"):]
+# Strip sslmode=disable (not understood by asyncpg)
+_raw_url = _raw_url.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
+DATABASE_URL = _raw_url
+
+_CONNECT_ARGS: dict = {}
+if "flycast" in DATABASE_URL or not DATABASE_URL:
+    _CONNECT_ARGS["ssl"] = False
+
 if DATABASE_URL:
     config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
@@ -56,6 +67,7 @@ async def run_async_migrations() -> None:
         config_section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_CONNECT_ARGS,
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

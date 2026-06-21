@@ -27,12 +27,12 @@ class AuditEvent(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    event_type: Mapped[AuditEventType] = mapped_column(SAEnum(AuditEventType), nullable=False)
+    event_type: Mapped[AuditEventType] = mapped_column(SAEnum(AuditEventType, values_callable=lambda x: [e.value for e in x]), nullable=False)
     resource_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    event_metadata: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
     on_chain_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     user: Mapped["User | None"] = relationship("User", back_populates="audit_events")

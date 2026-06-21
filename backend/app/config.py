@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://allocensus:allocensus_dev@localhost:5432/allocensus"
     DATABASE_URL_SYNC: str = "postgresql://allocensus:allocensus_dev@localhost:5432/allocensus"
 
+    @property
+    def async_database_url(self) -> str:
+        url = self.DATABASE_URL
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
     REDIS_URL: str = "redis://localhost:6379/0"
 
     JWT_SECRET_KEY: str = "change-me"

@@ -2,7 +2,6 @@
 import { useAuthStore } from "@/stores/auth";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { formatAddress } from "@/lib/utils";
 import { useState } from "react";
 import { userAPI } from "@/lib/api";
 import toast from "react-hot-toast";

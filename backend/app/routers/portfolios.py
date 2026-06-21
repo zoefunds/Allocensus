@@ -27,9 +27,16 @@ async def list_portfolios(user: CurrentUser, db: DB):
 
 @router.post("", response_model=PortfolioResponse, status_code=201)
 async def create(req: PortfolioCreate, user: CurrentUser, db: DB):
+    import uuid as _uuid
     portfolio = await create_portfolio(req, user.id, db)
     await log_event(db, AuditEventType.PORTFOLIO_CREATE, user_id=user.id, resource_id=str(portfolio.id))
-    return portfolio
+    # Reload with assets eagerly to avoid lazy-load during serialization
+    result = await db.execute(
+        select(Portfolio)
+        .options(selectinload(Portfolio.assets))
+        .where(Portfolio.id == portfolio.id)
+    )
+    return result.scalar_one()
 
 
 @router.get("/{portfolio_id}", response_model=PortfolioResponse)
