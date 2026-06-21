@@ -1,0 +1,171 @@
+import csv
+import io
+import uuid
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from app.models.rebalancing import RebalancingProposal, RationaleResult
+from app.dependencies import CurrentUser, DB
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.colors import HexColor, white
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.units import mm
+
+router = APIRouter()
+
+GREEN = HexColor("#10b981")
+SLATE = HexColor("#94a3b8")
+
+
+@router.get("/{proposal_id}/export/pdf")
+async def export_pdf(proposal_id: str, user: CurrentUser, db: DB):
+    result = await db.execute(
+        select(RebalancingProposal)
+        .options(selectinload(RebalancingProposal.rationale))
+        .where(RebalancingProposal.id == uuid.UUID(proposal_id))
+    )
+    proposal = result.scalar_one_or_none()
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    rationale = proposal.rationale
+    buf    = io.BytesIO()
+    styles = getSampleStyleSheet()
+
+    h1 = ParagraphStyle("H1", fontSize=20, textColor=HexColor("#0f172a"),
+                         fontName="Helvetica-Bold", spaceAfter=4)
+    h2 = ParagraphStyle("H2", fontSize=12, textColor=GREEN,
+                         fontName="Helvetica-Bold", spaceBefore=10, spaceAfter=4)
+    body = ParagraphStyle("Body", fontSize=10, textColor=HexColor("#334155"),
+                          leading=16, spaceAfter=6)
+    meta = ParagraphStyle("Meta", fontSize=9, textColor=HexColor("#64748b"), leading=14)
+    brand = ParagraphStyle("Brand", fontSize=9, textColor=GREEN,
+                           fontName="Helvetica-Bold", letterSpacing=2, spaceAfter=8)
+
+    doc   = SimpleDocTemplate(buf, pagesize=A4,
+                               leftMargin=20*mm, rightMargin=20*mm,
+                               topMargin=20*mm, bottomMargin=20*mm)
+    story = []
+
+    decision   = "APPROVED" if (rationale and rationale.approved) else "REJECTED"
+    dec_color  = "#10b981" if (rationale and rationale.approved) else "#ef4444"
+
+    story.append(Paragraph("ALLOCENSUS", brand))
+    story.append(Paragraph("Portfolio Rebalancing Rationale Report", h1))
+    story.append(Paragraph(
+        'Decision: <font color="' + dec_color + '"><b>' + decision + "</b></font>",
+        ParagraphStyle("Dec", fontSize=14, spaceAfter=4, fontName="Helvetica")))
+    story.append(Paragraph("Proposal ID: " + proposal_id, meta))
+    story.append(HRFlowable(width="100%", thickness=1,
+                             color=HexColor("#e2e8f0"), spaceAfter=12))
+
+    # Allocations table
+    story.append(Paragraph("Proposed Allocations", h2))
+    proposed = proposal.proposed_allocations or {}
+    current  = proposal.current_allocations  or {}
+    rows = [["Asset", "Current %", "Proposed %", "Change"]]
+    for sym, pw in sorted(proposed.items(), key=lambda x: x[1], reverse=True):
+        cw    = current.get(sym, 0.0)
+        delta = float(pw) - float(cw)
+        rows.append([sym, f"{float(cw):.2f}%", f"{float(pw):.2f}%",
+                     ("+" if delta >= 0 else "") + f"{delta:.2f}%"])
+
+    tbl = Table(rows, colWidths=[50*mm, 35*mm, 35*mm, 35*mm])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), HexColor("#f1f5f9")),
+        ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",   (0,0), (-1,-1), 9),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [white, HexColor("#f8fafc")]),
+        ("GRID", (0,0), (-1,-1), 0.5, HexColor("#e2e8f0")),
+        ("PADDING", (0,0), (-1,-1), 6),
+    ]))
+    story.append(tbl)
+    story.append(Spacer(1, 6*mm))
+
+    if rationale:
+        if rationale.rationale_text:
+            story.append(Paragraph("AI Evaluation Rationale", h2))
+            for para in rationale.rationale_text.split("\n\n"):
+                if para.strip():
+                    story.append(Paragraph(para.strip(), body))
+
+        sections = [
+            ("Risk Analysis",       rationale.risk_analysis),
+            ("Constraint Analysis", rationale.constraint_analysis),
+            ("Liquidity",           rationale.liquidity_assessment),
+            ("Objective Alignment", rationale.objective_alignment),
+        ]
+        for label, text in sections:
+            if text:
+                story.append(Paragraph(label, h2))
+                story.append(Paragraph(text, body))
+
+        vc = rationale.validator_consensus or {}
+        rec = vc.get("recommendation")
+        if rec:
+            story.append(Paragraph("Recommendation", h2))
+            story.append(Paragraph(rec, body))
+
+    story.append(Spacer(1, 6*mm))
+    story.append(HRFlowable(width="100%", thickness=1,
+                             color=HexColor("#e2e8f0"), spaceAfter=6))
+    story.append(Paragraph(
+        "Generated by Allocensus · Genlayer StudioNet · TX: "
+        + (proposal.genlayer_tx_hash or "N/A"),
+        ParagraphStyle("Footer", fontSize=7, textColor=HexColor("#94a3b8"), leading=10)))
+
+    doc.build(story)
+    buf.seek(0)
+    return StreamingResponse(
+        buf, media_type="application/pdf",
+        headers={"Content-Disposition":
+                 'attachment; filename="allocensus-' + proposal_id[:8] + '.pdf"'})
+
+
+@router.get("/{proposal_id}/export/csv")
+async def export_csv(proposal_id: str, user: CurrentUser, db: DB):
+    result = await db.execute(
+        select(RebalancingProposal)
+        .options(selectinload(RebalancingProposal.rationale))
+        .where(RebalancingProposal.id == uuid.UUID(proposal_id))
+    )
+    proposal  = result.scalar_one_or_none()
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    rationale = proposal.rationale
+    buf = io.StringIO()
+    w   = csv.writer(buf)
+
+    w.writerow(["ALLOCENSUS — Portfolio Rebalancing Export"])
+    w.writerow(["Proposal ID", proposal_id])
+    w.writerow(["Status", proposal.status.value])
+    w.writerow(["TX Hash", proposal.genlayer_tx_hash or ""])
+    w.writerow([])
+    w.writerow(["Asset", "Current Weight %", "Proposed Weight %", "Change %"])
+
+    proposed = proposal.proposed_allocations or {}
+    current  = proposal.current_allocations  or {}
+    for sym, pw in sorted(proposed.items(), key=lambda x: x[1], reverse=True):
+        cw = float(current.get(sym, 0.0))
+        w.writerow([sym, f"{cw:.4f}", f"{float(pw):.4f}", f"{float(pw)-cw:.4f}"])
+
+    w.writerow([])
+    if rationale:
+        w.writerow(["AI Evaluation"])
+        w.writerow(["Decision",             "Approved" if rationale.approved else "Rejected"])
+        w.writerow(["Confidence Score",     rationale.confidence_score or ""])
+        w.writerow(["Diversification Score",rationale.diversification_score or ""])
+        w.writerow(["Rationale",            rationale.rationale_text or ""])
+        w.writerow(["Risk Analysis",        rationale.risk_analysis or ""])
+        w.writerow(["Constraint Analysis",  rationale.constraint_analysis or ""])
+        w.writerow(["Liquidity",            rationale.liquidity_assessment or ""])
+        w.writerow(["Objective Alignment",  rationale.objective_alignment or ""])
+
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition":
+                 'attachment; filename="allocensus-' + proposal_id[:8] + '.csv"'})
