@@ -27,7 +27,8 @@ jobs:
       - name: Migrate via SSH
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl ssh console --app allocensus-api --command "cd /app && alembic upgrade head"
+        run: |
+          flyctl ssh console --app allocensus-api --command "cd /app && alembic upgrade head"
 
   deploy-frontend:
     name: Deploy Frontend to Vercel
