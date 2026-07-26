@@ -89,7 +89,7 @@ Production URLs:
 ## Contract Address
 
 New contract address:
-- `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6`
+- `0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca`
 
 ## Notes
 

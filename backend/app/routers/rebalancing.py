@@ -16,6 +16,7 @@ from typing import List
 import uuid
 
 router = APIRouter()
+STAKE_WEI = 10**18
 
 
 class TxHashSubmit(BaseModel):
@@ -107,7 +108,11 @@ async def get_call_data(proposal_id: str, user: CurrentUser, db: DB):
         asset_classes        = asset_classes,
         investor_profile     = investor_profile_dict,
         market_context       = market_context,
-        stake_context        = {"staked": False, "stake_tx_hash": None, "stake_amount": 0.0},
+        stake_context        = {
+            "staked": True,
+            "stake_tx_hash": "",
+            "stake_amount": STAKE_WEI,
+        },
     )
 
     return {
@@ -139,7 +144,8 @@ async def confirm_tx(proposal_id: str, body: TxHashSubmit, user: CurrentUser, db
     proposal.tx_authenticated_user_id = user.id
     proposal.tx_block_number = body.block_number
     proposal.proposal_version = body.proposal_version
-    proposal.stake_wei = 10**18
+    proposal.stake_wei = STAKE_WEI
+    proposal.stake_refund_claimed = False
     await db.commit()
 
     await log_event(

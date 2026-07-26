@@ -73,10 +73,15 @@ export function SubmitToGenlayerModal({ proposalId, onClose, onSuccess }: Props)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletPassword]);
 
+  useEffect(() => {
+    if (status === "confirmed" && approved !== null) {
+      onSuccess(approved);
+    }
+  }, [status, approved, onSuccess]);
+
   const handleFallbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await decryptAndSubmit(fallbackPw);
-    if (status === "confirmed" && approved !== null) onSuccess(approved);
   };
 
   return (

@@ -4,7 +4,7 @@
 - Frontend : https://allocensus.vercel.app
 - Backend  : https://allocensus-backend-zoe.fly.dev
 - GitHub   : https://github.com/zoefunds/Allocensus
-- Contract : 0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6 (Genlayer StudioNet)
+- Contract : 0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca (Genlayer StudioNet)
 
 ---
 
@@ -38,7 +38,7 @@ DATABASE_URL=<Fly PostgreSQL internal URL>
 DATABASE_URL_SYNC=<Fly PostgreSQL sync URL>
 REDIS_URL=<your Redis URL>
 GENLAYER_RPC_URL=https://studio.genlayer.com/api
-GENLAYER_CONTRACT_ADDRESS=0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6
+GENLAYER_CONTRACT_ADDRESS=0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca
 BREVO_API_KEY=<your Brevo API key>
 EMAIL_FROM=preciousmofeoluwa@gmail.com
 EMAIL_FROM_NAME=Allocensus
@@ -59,7 +59,7 @@ EMAIL_FROM_NAME=Allocensus
 ```
 NEXT_PUBLIC_API_URL=https://allocensus-backend-zoe.fly.dev
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca
 NEXT_PUBLIC_APP_URL=https://allocensus.vercel.app
 ```
 

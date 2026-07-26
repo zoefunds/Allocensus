@@ -63,7 +63,7 @@ Every decision is traceable, reproducible, and audit-ready.
 | Network | Genlayer StudioNet |
 | Chain ID | 61999 |
 | RPC | `https://studio.genlayer.com/api` |
-| Contract Address | `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6` |
+| Contract Address | `0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca` |
 | Consensus Main Contract | `0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575` |
 | Gas | Free (StudioNet has no gas fees) |
 
@@ -207,7 +207,7 @@ Frontend available at `http://localhost:3000`
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Default: 60 |
 | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Default: 7 |
 | `GENLAYER_RPC_URL` | `https://studio.genlayer.com/api` |
-| `GENLAYER_CONTRACT_ADDRESS` | `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6` |
+| `GENLAYER_CONTRACT_ADDRESS` | `0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca` |
 | `WALLET_ENCRYPTION_KEY` | 64-char hex key for server-side wallet encryption |
 | `WALLET_PBKDF2_ITERATIONS` | Default: 100000 |
 | `SENDGRID_API_KEY` | For email verification (optional) |
@@ -221,7 +221,7 @@ Frontend available at `http://localhost:3000`
 | `NEXT_PUBLIC_APP_URL` | Frontend URL |
 | `NEXT_PUBLIC_APP_NAME` | `Allocensus` |
 | `NEXT_PUBLIC_GENLAYER_RPC_URL` | `https://studio.genlayer.com/api` |
-| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6` |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `0x6501ecf77Cd3A559dDF5Eed16bc803b4aCBC56Ca` |
 
 ---
 

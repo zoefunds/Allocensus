@@ -300,7 +300,7 @@ class PortfolioRebalancingRationale(gl.Contract):
                                       "macro_signals": "neutral",
                                       "market_regime": "bull",
                                       "additional_context": ""}
-          stake_context      — JSON: {"staked": true, "stake_tx_hash": "...", "stake_amount": 0.0}
+          stake_context      — JSON: {"staked": true, "stake_tx_hash": "", "stake_amount": 0.0}
 
         Consensus strategy: prompt_comparative requires validators to agree only on
         the binary `approved` field. Reasoning text may legitimately differ.
@@ -330,8 +330,8 @@ class PortfolioRebalancingRationale(gl.Contract):
         if REQUIRES_STAKING:
             if gl.message.value != STAKE_WEI:
                 raise gl.vm.UserError("[EXPECTED] Rebalancing requires exactly 1 GEN of stake.")
-            if not stake.get("staked", False):
-                raise gl.vm.UserError("[EXPECTED] Staking must be completed before rebalancing.")
+            if u256(int(stake.get("stake_amount", "0"))) != STAKE_WEI:
+                raise gl.vm.UserError("[EXPECTED] Stake amount must equal exactly 1 GEN.")
 
         # ── Infer missing asset classes from well-known display names ─────────
         if not classes:
@@ -576,6 +576,7 @@ Replace the example values with your actual analysis. The "approved" field must 
             "stake_wei":                str(gl.message.value),
             "stake_refund_claimed":      False,
             "stake_recipient":          str(gl.message.sender_address),
+            "stake_context":            stake,
             "confidence_score":         evaluation.get("confidence_score", 0.7),
             "overall_rationale":        evaluation.get("overall_rationale", ""),
             "constraint_analysis":      evaluation.get("constraint_analysis", ""),

@@ -1,4 +1,4 @@
-app = "allocensus-api"
+app = "allocensus-backend-zoe"
 primary_region = "lhr"
 
 [build]

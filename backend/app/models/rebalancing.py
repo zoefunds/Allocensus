@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, Text, Float, JSON, Enum as SAEnum, Boolean
+from sqlalchemy import String, ForeignKey, Text, Float, JSON, Enum as SAEnum, Boolean, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base, TimestampMixin
@@ -30,12 +30,12 @@ class RebalancingProposal(Base, TimestampMixin):
 
     genlayer_tx_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     genlayer_tx_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    tx_block_number: Mapped[int | None] = mapped_column(nullable=True)
+    tx_block_number: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     tx_timestamp: Mapped[datetime | None] = mapped_column(nullable=True)
     proposal_version: Mapped[str] = mapped_column(String(32), nullable=False, default="1.0.0")
     tx_wallet_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tx_authenticated_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    stake_wei: Mapped[int | None] = mapped_column(nullable=True)
+    stake_wei: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     stake_refund_claimed: Mapped[bool] = mapped_column(nullable=False, default=False)
 
     constraint_violations: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

@@ -37,8 +37,8 @@ const GENLAYER_RPC             = process.env.NEXT_PUBLIC_GENLAYER_RPC_URL || "ht
 const CONSENSUS_MAIN_CONTRACT  = "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575";
 const NUM_VALIDATORS           = BigInt(5);
 const MAX_ROTATIONS            = BigInt(3);
-const POLL_INTERVAL_MS         = 8000;
-const MAX_POLLS                = 40;
+const POLL_INTERVAL_MS         = 2000;
+const MAX_POLLS                = 180;
 
 // ABI for addTransaction on the Consensus Main Contract
 const ADD_TRANSACTION_ABI = [

@@ -33,7 +33,7 @@ export default function ProposalDetailPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["proposal", id],
     queryFn:  () => rebalancingAPI.get(id),
-    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 8000 : false,
+    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 2000 : false,
   });
 
   const proposal  = data?.data;
@@ -230,7 +230,7 @@ export default function ProposalDetailPage() {
               <div className="w-12 h-12 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
               <p className="font-medium">Validators are reaching consensus</p>
               <p className="text-sm text-muted-foreground text-center max-w-sm">
-                Multiple Genlayer validators are independently evaluating your proposal. Page refreshes every 8 seconds.
+                Multiple Genlayer validators are independently evaluating your proposal. Page refreshes every 2 seconds.
               </p>
             </div>
           </Card>
