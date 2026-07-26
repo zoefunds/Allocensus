@@ -36,6 +36,7 @@ export default function ProposalDetailPage() {
     queryFn:  () => rebalancingAPI.get(id),
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
+    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 2000 : false,
   });
 
   useEffect(() => {
