@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -60,6 +60,14 @@ export default function ProposalDetailPage() {
 
   const proposal  = data?.data;
   const rationale = proposal?.rationale;
+  const isDraft   = proposal?.status === "draft";
+  const isPending = proposal?.status === "pending_consensus";
+  const isDone    = ["approved","rejected"].includes(proposal?.status ?? "");
+  const isApproved = proposal?.status === "approved";
+  const pendingAgeMs = proposal && isPending
+    ? Math.max(0, now - Date.parse(proposal.created_at))
+    : 0;
+  const pendingTooLong = Boolean(isPending && pendingAgeMs > PENDING_TIMEOUT_MS);
 
   const handleExportPdf = async () => {
     try { const r = await rebalancingAPI.exportPdf(id); downloadBlob(r.data, `allocensus-${id.slice(0,8)}.pdf`); }
@@ -92,17 +100,6 @@ export default function ProposalDetailPage() {
     </div>
   );
   if (!proposal) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Proposal not found</div>;
-
-  const isDraft   = proposal.status === "draft";
-  const isPending = proposal.status === "pending_consensus";
-  const isDone    = ["approved","rejected"].includes(proposal.status);
-  const isApproved = proposal.status === "approved";
-  const pendingAgeMs = useMemo(() => {
-    if (!isPending) return 0;
-    const createdAt = Date.parse(proposal.created_at);
-    return Number.isNaN(createdAt) ? 0 : Math.max(0, now - createdAt);
-  }, [isPending, now, proposal.created_at]);
-  const pendingTooLong = isPending && pendingAgeMs > PENDING_TIMEOUT_MS;
 
   return (
     <div className="space-y-6">
