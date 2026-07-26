@@ -146,7 +146,7 @@ export function SubmitToGenlayerModal({ proposalId, onClose, onSuccess }: Props)
             <div className="flex gap-3 pt-2">
               {isDone ? (
                 <Button variant="primary" className="flex-1"
-                  onClick={() => { onSuccess(approved ?? false); onClose(); }}>
+                  onClick={onClose}>
                   View Rationale
                 </Button>
               ) : (

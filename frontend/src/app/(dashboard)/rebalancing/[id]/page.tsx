@@ -59,6 +59,7 @@ export default function ProposalDetailPage() {
 
   const handleSuccess = (approved: boolean) => {
     toast.success(approved ? "Proposal approved!" : "Proposal rejected");
+    qc.refetchQueries({ queryKey: ["proposal", id], exact: true });
     qc.invalidateQueries({ queryKey: ["proposal", id] });
     qc.invalidateQueries({ queryKey: ["proposals"] });
   };
