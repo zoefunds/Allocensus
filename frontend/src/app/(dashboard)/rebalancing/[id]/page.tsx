@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { rebalancingAPI } from "@/lib/api";
-import { REBALANCING_UPDATED_EVENT } from "@/lib/rebalancing-events";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -49,20 +48,9 @@ export default function ProposalDetailPage() {
     },
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 1000 : false,
+    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 4000 : false,
     refetchIntervalInBackground: true,
   });
-
-  useEffect(() => {
-    const onUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<{ proposalId?: string }>).detail;
-      if (detail?.proposalId === id) {
-        refetch();
-      }
-    };
-    window.addEventListener(REBALANCING_UPDATED_EVENT, onUpdated);
-    return () => window.removeEventListener(REBALANCING_UPDATED_EVENT, onUpdated);
-  }, [id, refetch]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 15000);

@@ -15,7 +15,6 @@ import { useState, useCallback } from "react";
 import { ethers } from "ethers";
 import { abi as glAbi } from "genlayer-js";
 import { rebalancingAPI } from "@/lib/api";
-import { emitRebalancingUpdated } from "@/lib/rebalancing-events";
 
 export type TxStatus =
   | "idle"
@@ -133,7 +132,6 @@ export function useGenlayerTx(): UseGenlayerTxResult {
           if (pollStatus !== "pending_consensus") {
             setApproved(pollApproved ?? null);
             setStatus("confirmed");
-            emitRebalancingUpdated(proposalId);
             return;
           }
         } catch {
