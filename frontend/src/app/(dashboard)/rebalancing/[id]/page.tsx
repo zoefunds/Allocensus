@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { rebalancingAPI } from "@/lib/api";
+import { REBALANCING_UPDATED_EVENT } from "@/lib/rebalancing-events";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -30,11 +31,23 @@ export default function ProposalDetailPage() {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["proposal", id],
     queryFn:  () => rebalancingAPI.get(id),
-    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 2000 : false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
+
+  useEffect(() => {
+    const onUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ proposalId?: string }>).detail;
+      if (detail?.proposalId === id) {
+        refetch();
+      }
+    };
+    window.addEventListener(REBALANCING_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(REBALANCING_UPDATED_EVENT, onUpdated);
+  }, [id, refetch]);
 
   const proposal  = data?.data;
   const rationale = proposal?.rationale;
@@ -59,7 +72,7 @@ export default function ProposalDetailPage() {
 
   const handleSuccess = (approved: boolean) => {
     toast.success(approved ? "Proposal approved!" : "Proposal rejected");
-    qc.refetchQueries({ queryKey: ["proposal", id], exact: true });
+    refetch();
     qc.invalidateQueries({ queryKey: ["proposal", id] });
     qc.invalidateQueries({ queryKey: ["proposals"] });
   };
@@ -231,7 +244,7 @@ export default function ProposalDetailPage() {
               <div className="w-12 h-12 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
               <p className="font-medium">Validators are reaching consensus</p>
               <p className="text-sm text-muted-foreground text-center max-w-sm">
-                Multiple Genlayer validators are independently evaluating your proposal. Page refreshes every 2 seconds.
+                Multiple Genlayer validators are independently evaluating your proposal. The page updates as soon as consensus is confirmed.
               </p>
             </div>
           </Card>
