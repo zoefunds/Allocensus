@@ -32,11 +32,13 @@ export default function ProposalDetailPage() {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["proposal", id],
     queryFn:  async () => {
       try {
+        setLoadError(null);
         const proposalRes = await rebalancingAPI.get(id);
         const proposalData = proposalRes.data;
         if (proposalData?.status === "pending_consensus" && proposalData?.genlayer_tx_hash) {
@@ -52,6 +54,11 @@ export default function ProposalDetailPage() {
           const listRes = await rebalancingAPI.list();
           const match = (listRes.data || []).find((proposal: { id?: string }) => proposal.id === id);
           if (match) return { data: match };
+        }
+        if (status === 401) {
+          setLoadError("Your session expired. Please sign in again.");
+        } else {
+          setLoadError("We could not load this proposal right now. Please retry.");
         }
         throw err;
       }
@@ -77,6 +84,7 @@ export default function ProposalDetailPage() {
     ? Math.max(0, now - Date.parse(proposal.created_at))
     : 0;
   const pendingTooLong = Boolean(isPending && pendingAgeMs > PENDING_TIMEOUT_MS);
+  const rootLoadError = loadError || (isError ? (error instanceof Error ? error.message : "We could not load this proposal right now.") : null);
 
   const handleExportPdf = async () => {
     try { const r = await rebalancingAPI.exportPdf(id); downloadBlob(r.data, `allocensus-${id.slice(0,8)}.pdf`); }
@@ -108,7 +116,22 @@ export default function ProposalDetailPage() {
       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
     </div>
   );
-  if (!proposal) return <div className="flex items-center justify-center min-h-screen text-muted-foreground">Proposal not found</div>;
+  if (!proposal) {
+    return (
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <Card className="max-w-md w-full text-center p-8">
+          <CardTitle className="mb-2">Could not load proposal</CardTitle>
+          <p className="text-sm text-muted-foreground mb-6">
+            {rootLoadError || "We could not load this proposal right now."}
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button variant="secondary" onClick={() => router.push("/rebalancing")}>Back to list</Button>
+            <Button onClick={() => refetch()}>Retry</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
