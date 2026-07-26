@@ -133,13 +133,11 @@ class GenLayerService:
 
     async def read_rationale(self, tx_hash: str, proposal_id: str) -> dict | None:
         """
-        Check tx is FINALIZED, then read the stored evaluation from on-chain state
-        via gen_call → get_proposal(proposal_id).
-        Returns parsed evaluation dict, or None if not yet finalized.
+        Read the stored evaluation from on-chain state via gen_call →
+        get_proposal(proposal_id). StudioNet finality metadata can vary by
+        environment, so we treat the on-chain read as the source of truth and
+        use the tx hash only as the lookup anchor.
         """
-        if not await self.is_tx_finalized(tx_hash):
-            return None
-
         calldata = _gl_calldata("get_proposal", {"proposal_id": proposal_id})
         data_hex = _rlp_read_request(calldata)
 
