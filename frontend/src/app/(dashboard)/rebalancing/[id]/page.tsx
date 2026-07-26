@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/Badge";
 import { SubmitToGenlayerModal } from "@/components/rebalancing/SubmitToGenlayerModal";
 import { FileText, Download, Zap, CheckCircle2, XCircle, ArrowLeft, ExternalLink, AlertTriangle, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
+
+const PENDING_TIMEOUT_MS = 10 * 60 * 1000;
 
 function statusVariant(s: string): "success"|"danger"|"warning"|"info"|"default" {
   return ({ approved:"success", rejected:"danger", pending_consensus:"warning",
@@ -30,6 +32,7 @@ export default function ProposalDetailPage() {
   const router = useRouter();
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["proposal", id],
@@ -49,6 +52,11 @@ export default function ProposalDetailPage() {
     window.addEventListener(REBALANCING_UPDATED_EVENT, onUpdated);
     return () => window.removeEventListener(REBALANCING_UPDATED_EVENT, onUpdated);
   }, [id, refetch]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const proposal  = data?.data;
   const rationale = proposal?.rationale;
@@ -89,6 +97,12 @@ export default function ProposalDetailPage() {
   const isPending = proposal.status === "pending_consensus";
   const isDone    = ["approved","rejected"].includes(proposal.status);
   const isApproved = proposal.status === "approved";
+  const pendingAgeMs = useMemo(() => {
+    if (!isPending) return 0;
+    const createdAt = Date.parse(proposal.created_at);
+    return Number.isNaN(createdAt) ? 0 : Math.max(0, now - createdAt);
+  }, [isPending, now, proposal.created_at]);
+  const pendingTooLong = isPending && pendingAgeMs > PENDING_TIMEOUT_MS;
 
   return (
     <div className="space-y-6">
@@ -115,7 +129,7 @@ export default function ProposalDetailPage() {
             {(isDraft || isPending) && (
               <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 className="w-3.5 h-3.5" /></Button>
             )}
-            {isPending && <Button variant="secondary" disabled>
+        {isPending && <Button variant="secondary" disabled>
               <div className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
               Awaiting Consensus
             </Button>}
@@ -239,7 +253,7 @@ export default function ProposalDetailPage() {
           </Card>
         )}
 
-        {isPending && !rationale && (
+        {isPending && !rationale && !pendingTooLong && (
           <Card>
             <div className="flex flex-col items-center py-12 gap-4">
               <div className="w-12 h-12 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
@@ -247,6 +261,23 @@ export default function ProposalDetailPage() {
               <p className="text-sm text-muted-foreground text-center max-w-sm">
                 Multiple Genlayer validators are independently evaluating your proposal. The page updates as soon as consensus is confirmed.
               </p>
+            </div>
+          </Card>
+        )}
+
+        {pendingTooLong && (
+          <Card>
+            <div className="flex flex-col items-center py-12 gap-4">
+              <div className="w-12 h-12 rounded-full border-2 border-amber-400/40 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-amber-400" />
+              </div>
+              <p className="font-medium">Consensus is taking longer than expected</p>
+              <p className="text-sm text-muted-foreground text-center max-w-sm">
+                We have not received a finalized contract result yet. You can keep this page open, or use refresh to check again.
+              </p>
+              <Button variant="secondary" onClick={() => refetch()}>
+                Refresh status
+              </Button>
             </div>
           </Card>
         )}
