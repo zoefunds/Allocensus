@@ -36,10 +36,21 @@ export default function ProposalDetailPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["proposal", id],
-    queryFn:  () => rebalancingAPI.get(id),
+    queryFn:  async () => {
+      const proposalRes = await rebalancingAPI.get(id);
+      const proposalData = proposalRes.data;
+      if (proposalData?.status === "pending_consensus" && proposalData?.genlayer_tx_hash) {
+        const pollRes = await rebalancingAPI.pollResult(id);
+        if (pollRes.data?.status !== "pending_consensus") {
+          return rebalancingAPI.get(id);
+        }
+      }
+      return proposalRes;
+    },
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 2000 : false,
+    refetchInterval: (q) => q.state.data?.data?.status === "pending_consensus" ? 1000 : false,
+    refetchIntervalInBackground: true,
   });
 
   useEffect(() => {
