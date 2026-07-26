@@ -62,9 +62,11 @@ export const rebalancingAPI = {
   list:         () => api.get("/api/rebalancing"),
   get:          (id: string) => api.get(`/api/rebalancing/${id}`),
   create:       (data: unknown) => api.post("/api/rebalancing", data),
+  rules:        () => api.get("/api/rebalancing/rules"),
+  stake:        (id: string) => api.get(`/api/rebalancing/${id}/stake`),
   getCallData:  (id: string) => api.get(`/api/rebalancing/${id}/call-data`),
-  confirmTx:    (id: string, tx_hash: string) =>
-    api.post(`/api/rebalancing/${id}/confirm-tx`, { tx_hash }),
+  confirmTx:    (id: string, payload: { tx_hash: string; wallet_address: string; block_number: number; proposal_version: string }) =>
+    api.post(`/api/rebalancing/${id}/confirm-tx`, payload),
   pollResult:   (id: string) => api.post(`/api/rebalancing/${id}/poll-result`),
   getRationale: (id: string) => api.get(`/api/rebalancing/${id}/rationale`),
   delete:       (id: string) => api.delete(`/api/rebalancing/${id}`),

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { rebalancingAPI } from "@/lib/api";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -89,6 +90,9 @@ export default function ProposalDetailPage() {
             {isDone && <>
               <Button variant="secondary" size="sm" onClick={handleExportCsv}><Download className="w-3.5 h-3.5" /> CSV</Button>
               <Button variant="secondary" size="sm" onClick={handleExportPdf}><FileText className="w-3.5 h-3.5" /> PDF</Button>
+              <Link href={`/rebalancing/${id}/claim`}>
+                <Button variant="secondary" size="sm">Claim Refund</Button>
+              </Link>
             </>}
             {isDraft && <>
               <Button onClick={() => setShowModal(true)}><Zap className="w-4 h-4" />Submit to Genlayer</Button>

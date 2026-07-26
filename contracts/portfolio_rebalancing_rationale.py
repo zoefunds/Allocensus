@@ -31,6 +31,26 @@ MAX_ILLIQUID_PCT         = 40.0   # max illiquid exposure
 MIN_ASSET_CLASSES        = 2      # minimum distinct asset classes
 MAX_DEFI_PROTOCOL_PCT    = 15.0
 MAX_LEVERAGE             = 0.0
+REQUIRES_STAKING         = True
+STAKE_WEI                = u256(10**18)
+STAKE_REFUND_BPS         = u256(5000)
+
+
+@gl.evm.contract_interface
+class _Recipient:
+    class View:
+        pass
+
+    class Write:
+        pass
+
+
+def _send_gen(to_address: str, amount: u256) -> None:
+    if not to_address:
+        raise gl.vm.UserError("Missing recipient address")
+    if amount <= u256(0):
+        raise gl.vm.UserError("Transfer amount must be positive")
+    _Recipient(Address(to_address)).emit_transfer(value=amount)
 
 ILLIQUID_CLASSES = {"defi_protocols", "tokenised_rwa", "alternatives", "real_estate"}
 LIQUID_CLASSES   = {"stablecoins", "cash", "Cash", "fixed_income"}
@@ -193,31 +213,31 @@ class PortfolioRebalancingRationale(gl.Contract):
                 },
                 {
                     "id": "MAX_SINGLE_ASSET",
-                    "description": "No single asset may exceed 30% of the portfolio",
+                    "description": "No single asset may exceed 70% of the portfolio",
                     "limit": MAX_SINGLE_ASSET_PCT,
                     "hard": True,
                 },
                 {
                     "id": "MAX_ASSET_CLASS",
-                    "description": "No single asset class may exceed 60% of the portfolio",
+                    "description": "No single asset class may exceed 80% of the portfolio",
                     "limit": MAX_SINGLE_CLASS_PCT,
                     "hard": True,
                 },
                 {
                     "id": "MIN_LIQUIDITY",
-                    "description": "Stablecoins and cash must represent at least 5% of the portfolio",
+                    "description": "Stablecoins and cash must represent at least 2% of the portfolio",
                     "limit": MIN_LIQUIDITY_PCT,
                     "hard": True,
                 },
                 {
                     "id": "MAX_ILLIQUID",
-                    "description": "DeFi protocols and illiquid RWA combined may not exceed 25%",
+                    "description": "DeFi protocols and illiquid RWA combined may not exceed 40% of the portfolio",
                     "limit": MAX_ILLIQUID_PCT,
                     "hard": True,
                 },
                 {
                     "id": "MIN_DIVERSIFICATION",
-                    "description": "Portfolio must span at least 3 distinct asset classes",
+                    "description": "Portfolio must span at least 2 distinct asset classes",
                     "limit": float(MIN_ASSET_CLASSES),
                     "hard": True,
                 },
@@ -244,6 +264,7 @@ class PortfolioRebalancingRationale(gl.Contract):
                 "stablecoins",
                 "cash",
             ],
+            "requires_staking_before_rebalance": REQUIRES_STAKING,
             "supported_risk_profiles": list(RISK_PROFILES.keys()),
             "supported_horizons": list(HORIZON_LABELS.keys()),
         })
@@ -253,7 +274,7 @@ class PortfolioRebalancingRationale(gl.Contract):
     # PUBLIC WRITE METHODS
     # =========================================================================
 
-    @gl.public.write
+    @gl.public.write.payable
     def evaluate_rebalancing(
         self,
         proposal_id:        str,
@@ -262,6 +283,7 @@ class PortfolioRebalancingRationale(gl.Contract):
         asset_classes:      str,
         investor_profile:   str,
         market_context:     str,
+        stake_context:      str,
     ) -> None:
         """
         Evaluate a portfolio rebalancing proposal using Genlayer LLM consensus.
@@ -278,6 +300,7 @@ class PortfolioRebalancingRationale(gl.Contract):
                                       "macro_signals": "neutral",
                                       "market_regime": "bull",
                                       "additional_context": ""}
+          stake_context      — JSON: {"staked": true, "stake_tx_hash": "...", "stake_amount": 0.0}
 
         Consensus strategy: prompt_comparative requires validators to agree only on
         the binary `approved` field. Reasoning text may legitimately differ.
@@ -296,6 +319,7 @@ class PortfolioRebalancingRationale(gl.Contract):
             classes  = json.loads(asset_classes)
             profile  = json.loads(investor_profile)
             context  = json.loads(market_context)
+            stake    = json.loads(stake_context)
         except json.JSONDecodeError as e:
             raise gl.vm.UserError(f"[EXPECTED] Invalid JSON input: {e}")
 
@@ -303,6 +327,11 @@ class PortfolioRebalancingRationale(gl.Contract):
             raise gl.vm.UserError("[EXPECTED] Proposed portfolio is empty.")
         if not current:
             raise gl.vm.UserError("[EXPECTED] Current portfolio is empty.")
+        if REQUIRES_STAKING:
+            if gl.message.value != STAKE_WEI:
+                raise gl.vm.UserError("[EXPECTED] Rebalancing requires exactly 1 GEN of stake.")
+            if not stake.get("staked", False):
+                raise gl.vm.UserError("[EXPECTED] Staking must be completed before rebalancing.")
 
         # ── Infer missing asset classes from well-known display names ─────────
         if not classes:
@@ -544,6 +573,9 @@ Replace the example values with your actual analysis. The "approved" field must 
             "proposal_id":              proposal_id,
             "approved":                 approved,
             "submitted_by":             str(gl.message.sender_address),
+            "stake_wei":                str(gl.message.value),
+            "stake_refund_claimed":      False,
+            "stake_recipient":          str(gl.message.sender_address),
             "confidence_score":         evaluation.get("confidence_score", 0.7),
             "overall_rationale":        evaluation.get("overall_rationale", ""),
             "constraint_analysis":      evaluation.get("constraint_analysis", ""),
@@ -577,6 +609,7 @@ Replace the example values with your actual analysis. The "approved" field must 
                 "asset_classes":      classes,
                 "investor_profile":   profile,
                 "market_context":     context,
+                "stake_context":      stake,
             },
         }
 
@@ -589,6 +622,23 @@ Replace the example values with your actual analysis. The "approved" field must 
             self.total_approved = self.total_approved + u256(1)
         else:
             self.total_rejected = self.total_rejected + u256(1)
+
+
+    @gl.public.write
+    def claim_stake_refund(self, proposal_id: str, recipient_address: str) -> None:
+        raw = self.proposals_json.get(proposal_id, "")
+        if not raw:
+            raise gl.vm.UserError(f"[EXPECTED] Proposal '{proposal_id}' not found.")
+        record = json.loads(raw)
+        if record.get("stake_refund_claimed", False):
+            raise gl.vm.UserError("[EXPECTED] Stake refund already claimed.")
+        stake_wei = u256(int(record.get("stake_wei", "0")))
+        if stake_wei <= u256(0):
+            raise gl.vm.UserError("[EXPECTED] No stake recorded for this proposal.")
+        refund = (stake_wei * STAKE_REFUND_BPS) // u256(10000)
+        record["stake_refund_claimed"] = True
+        self.proposals_json[proposal_id] = json.dumps(record)
+        _send_gen(recipient_address, refund)
 
 
     @gl.public.write

@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     WALLET_PBKDF2_ITERATIONS: int = 310000
 
     GENLAYER_RPC_URL: str = "https://studio.genlayer.com/api"
-    GENLAYER_CONTRACT_ADDRESS: str = "0xe45A5379bDD30BF75D08752cb32c4178f59445EA"
+    GENLAYER_CONTRACT_ADDRESS: str = "0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6"
 
     COINGECKO_API_KEY: str = ""
     YAHOO_FINANCE_ENABLED: bool = True

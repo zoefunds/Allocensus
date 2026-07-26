@@ -2,9 +2,9 @@
 
 ## URLs
 - Frontend : https://allocensus.vercel.app
-- Backend  : https://allocensus-api.up.railway.app
+- Backend  : https://allocensus-backend-zoe.fly.dev
 - GitHub   : https://github.com/zoefunds/Allocensus
-- Contract : 0xe45A5379bDD30BF75D08752cb32c4178f59445EA (Genlayer StudioNet)
+- Contract : 0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6 (Genlayer StudioNet)
 
 ---
 
@@ -22,11 +22,11 @@ git push -u origin main
 
 ---
 
-## Step 2 — Railway (Backend)
+## Step 2 — Fly.io Backend
 
-1. railway.app → New Project → Deploy from GitHub → zoefunds/Allocensus
+1. fly.io → New App → Deploy from GitHub → zoefunds/Allocensus
 2. Root directory: `backend`
-3. Add environment variables (Railway dashboard → Variables):
+3. Add environment variables (Fly dashboard → Secrets):
 
 ```
 APP_ENV=production
@@ -34,18 +34,18 @@ SECRET_KEY=<from backend/.env>
 JWT_SECRET_KEY=<from backend/.env>
 WALLET_ENCRYPTION_KEY=<from backend/.env>
 ALLOWED_ORIGINS=https://allocensus.vercel.app
-DATABASE_URL=<Railway PostgreSQL internal URL>
-DATABASE_URL_SYNC=<Railway PostgreSQL sync URL>
-REDIS_URL=<your Upstash Redis URL>
+DATABASE_URL=<Fly PostgreSQL internal URL>
+DATABASE_URL_SYNC=<Fly PostgreSQL sync URL>
+REDIS_URL=<your Redis URL>
 GENLAYER_RPC_URL=https://studio.genlayer.com/api
-GENLAYER_CONTRACT_ADDRESS=0xe45A5379bDD30BF75D08752cb32c4178f59445EA
+GENLAYER_CONTRACT_ADDRESS=0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6
 BREVO_API_KEY=<your Brevo API key>
 EMAIL_FROM=preciousmofeoluwa@gmail.com
 EMAIL_FROM_NAME=Allocensus
 ```
 
-4. After first deploy → Railway shell → `alembic upgrade head`
-5. Note the Railway service URL
+4. After first deploy → Fly SSH console → `sh -lc "cd /app && alembic upgrade head"`
+5. Note the Fly service URL
 
 ---
 
@@ -57,9 +57,9 @@ EMAIL_FROM_NAME=Allocensus
 4. Environment variables:
 
 ```
-NEXT_PUBLIC_API_URL=https://allocensus-api.up.railway.app
+NEXT_PUBLIC_API_URL=https://allocensus-backend-zoe.fly.dev
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio.genlayer.com/api
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xe45A5379bDD30BF75D08752cb32c4178f59445EA
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6
 NEXT_PUBLIC_APP_URL=https://allocensus.vercel.app
 ```
 
@@ -73,13 +73,13 @@ Settings → Secrets → Actions → New repository secret:
 
 | Secret | Where to get it |
 |--------|----------------|
-| `RAILWAY_TOKEN` | Railway → Account Settings → Tokens |
-| `RAILWAY_DATABASE_URL_SYNC` | Railway → PostgreSQL service → Variables |
+| `FLY_API_TOKEN` | Fly.io → Account settings → Tokens |
+| `FLY_DATABASE_URL_SYNC` | Fly PostgreSQL service → connection string |
 | `VERCEL_TOKEN` | Vercel → Settings → Tokens |
 | `VERCEL_ORG_ID` | Vercel → Settings → General |
 | `VERCEL_PROJECT_ID` | Vercel → Project → Settings |
 
-After secrets are set, every push to `main` auto-deploys both Railway and Vercel.
+After secrets are set, every push to `main` auto-deploys both Fly and Vercel.
 
 ---
 
@@ -87,10 +87,10 @@ After secrets are set, every push to `main` auto-deploys both Railway and Vercel
 
 ```bash
 # Backend health
-curl https://allocensus-api.up.railway.app/api/health
+curl https://allocensus-backend-zoe.fly.dev/api/health
 
 # API docs
-open https://allocensus-api.up.railway.app/api/docs
+open https://allocensus-backend-zoe.fly.dev/api/docs
 
 # Frontend
 open https://allocensus.vercel.app

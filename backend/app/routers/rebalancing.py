@@ -5,11 +5,13 @@ from sqlalchemy.orm import selectinload
 from app.models.rebalancing import RebalancingProposal, ProposalStatus
 from app.models.portfolio import Portfolio
 from app.schemas.rebalancing import ProposalCreate, ProposalResponse, RationaleResponse
+from app.schemas.rules import InvestmentRulesResponse
 from app.services.rebalancing_service import create_proposal, process_rationale_result
 from app.services.genlayer_service import genlayer_service
 from app.services.audit_service import log_event
 from app.models.audit import AuditEventType
 from app.dependencies import CurrentUser, DB
+from app.utils.constraints import get_investment_rules
 from typing import List
 import uuid
 
@@ -18,6 +20,31 @@ router = APIRouter()
 
 class TxHashSubmit(BaseModel):
     tx_hash: str
+    wallet_address: str
+    block_number: int
+    proposal_version: str
+
+
+async def _get_owned_proposal(proposal_id: str, user, db, *, with_portfolio: bool = True):
+    query = select(RebalancingProposal).where(RebalancingProposal.id == uuid.UUID(proposal_id))
+    if with_portfolio:
+        query = query.options(
+            selectinload(RebalancingProposal.portfolio).selectinload(Portfolio.assets),
+            selectinload(RebalancingProposal.portfolio).selectinload(Portfolio.investor_profile),
+            selectinload(RebalancingProposal.rationale),
+        )
+    result = await db.execute(query)
+    proposal = result.scalar_one_or_none()
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    if proposal.submitted_by != user.id and proposal.portfolio.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    return proposal
+
+
+@router.get("/rules", response_model=InvestmentRulesResponse)
+async def rules():
+    return get_investment_rules()
 
 
 @router.post("", response_model=ProposalResponse, status_code=201)
@@ -39,15 +66,7 @@ async def list_proposals(user: CurrentUser, db: DB):
 
 @router.get("/{proposal_id}", response_model=ProposalResponse)
 async def get_proposal(proposal_id: str, user: CurrentUser, db: DB):
-    result = await db.execute(
-        select(RebalancingProposal)
-        .options(selectinload(RebalancingProposal.rationale))
-        .where(RebalancingProposal.id == uuid.UUID(proposal_id))
-    )
-    proposal = result.scalar_one_or_none()
-    if not proposal:
-        raise HTTPException(status_code=404, detail="Proposal not found")
-    return proposal
+    return await _get_owned_proposal(proposal_id, user, db)
 
 
 @router.get("/{proposal_id}/call-data")
@@ -57,17 +76,7 @@ async def get_call_data(proposal_id: str, user: CurrentUser, db: DB):
     The frontend uses this to construct and sign the transaction with the
     user's own wallet — the backend never sees or uses any private key.
     """
-    result = await db.execute(
-        select(RebalancingProposal)
-        .options(
-            selectinload(RebalancingProposal.portfolio).selectinload(Portfolio.assets),
-            selectinload(RebalancingProposal.portfolio).selectinload(Portfolio.investor_profile),
-        )
-        .where(RebalancingProposal.id == uuid.UUID(proposal_id))
-    )
-    proposal = result.scalar_one_or_none()
-    if not proposal:
-        raise HTTPException(status_code=404, detail="Proposal not found")
+    proposal = await _get_owned_proposal(proposal_id, user, db)
     if proposal.status != ProposalStatus.DRAFT:
         raise HTTPException(status_code=400, detail="Only draft proposals can be submitted")
 
@@ -98,6 +107,7 @@ async def get_call_data(proposal_id: str, user: CurrentUser, db: DB):
         asset_classes        = asset_classes,
         investor_profile     = investor_profile_dict,
         market_context       = market_context,
+        stake_context        = {"staked": False, "stake_tx_hash": None, "stake_amount": 0.0},
     )
 
     return {
@@ -108,6 +118,7 @@ async def get_call_data(proposal_id: str, user: CurrentUser, db: DB):
             "Sign and broadcast this transaction using your connected wallet. "
             "Then POST the resulting tx_hash to /api/rebalancing/{id}/confirm-tx"
         ),
+        "rules": get_investment_rules(),
     }
 
 
@@ -118,18 +129,17 @@ async def confirm_tx(proposal_id: str, body: TxHashSubmit, user: CurrentUser, db
     Genlayer transaction. Records the tx_hash and marks the proposal as
     pending consensus.
     """
-    result = await db.execute(
-        select(RebalancingProposal)
-        .where(RebalancingProposal.id == uuid.UUID(proposal_id))
-    )
-    proposal = result.scalar_one_or_none()
-    if not proposal:
-        raise HTTPException(status_code=404, detail="Proposal not found")
+    proposal = await _get_owned_proposal(proposal_id, user, db)
     if proposal.status != ProposalStatus.DRAFT:
         raise HTTPException(status_code=400, detail="Proposal is not in draft status")
 
     proposal.genlayer_tx_hash = body.tx_hash
     proposal.status           = ProposalStatus.PENDING_CONSENSUS
+    proposal.tx_wallet_address = body.wallet_address
+    proposal.tx_authenticated_user_id = user.id
+    proposal.tx_block_number = body.block_number
+    proposal.proposal_version = body.proposal_version
+    proposal.stake_wei = 10**18
     await db.commit()
 
     await log_event(
@@ -146,11 +156,8 @@ async def confirm_tx(proposal_id: str, body: TxHashSubmit, user: CurrentUser, db
 @router.post("/{proposal_id}/poll-result")
 async def poll_result(proposal_id: str, user: CurrentUser, db: DB):
     """Poll Genlayer for transaction result and persist rationale once consensus is reached."""
-    result = await db.execute(
-        select(RebalancingProposal).where(RebalancingProposal.id == uuid.UUID(proposal_id))
-    )
-    proposal = result.scalar_one_or_none()
-    if not proposal or not proposal.genlayer_tx_hash:
+    proposal = await _get_owned_proposal(proposal_id, user, db)
+    if not proposal.genlayer_tx_hash:
         raise HTTPException(status_code=404, detail="Proposal or tx_hash not found")
 
     raw = await genlayer_service.read_rationale(proposal.genlayer_tx_hash, proposal_id)
@@ -175,12 +182,7 @@ async def poll_result(proposal_id: str, user: CurrentUser, db: DB):
 
 @router.delete("/{proposal_id}", status_code=204)
 async def delete_proposal(proposal_id: str, user: CurrentUser, db: DB):
-    result = await db.execute(
-        select(RebalancingProposal).where(RebalancingProposal.id == uuid.UUID(proposal_id))
-    )
-    proposal = result.scalar_one_or_none()
-    if not proposal:
-        raise HTTPException(status_code=404, detail="Proposal not found")
+    proposal = await _get_owned_proposal(proposal_id, user, db)
     if proposal.status not in (ProposalStatus.DRAFT, ProposalStatus.FAILED, ProposalStatus.PENDING_CONSENSUS):
         raise HTTPException(status_code=400, detail="Only DRAFT, PENDING, or FAILED proposals can be deleted")
     await db.delete(proposal)
@@ -190,10 +192,24 @@ async def delete_proposal(proposal_id: str, user: CurrentUser, db: DB):
 @router.get("/{proposal_id}/rationale", response_model=RationaleResponse)
 async def get_rationale(proposal_id: str, user: CurrentUser, db: DB):
     from app.models.rebalancing import RationaleResult
-    result = await db.execute(
-        select(RationaleResult).where(RationaleResult.proposal_id == uuid.UUID(proposal_id))
-    )
-    rationale = result.scalar_one_or_none()
+    proposal = await _get_owned_proposal(proposal_id, user, db)
+    rationale = proposal.rationale
     if not rationale:
         raise HTTPException(status_code=404, detail="Rationale not yet available")
     return rationale
+
+
+@router.get("/{proposal_id}/stake")
+async def get_stake_info(proposal_id: str, user: CurrentUser, db: DB):
+    proposal = await _get_owned_proposal(proposal_id, user, db)
+    stake_wei = int(proposal.stake_wei or 0)
+    return {
+        "proposal_id": str(proposal.id),
+        "wallet_address": proposal.tx_wallet_address or "",
+        "contract_address": genlayer_service.contract_address,
+        "stake_wei": stake_wei,
+        "refund_wei": stake_wei // 2 if stake_wei else 0,
+        "claimable": bool(proposal.genlayer_tx_hash and proposal.rationale and proposal.tx_wallet_address),
+        "claimed": bool(proposal.stake_refund_claimed),
+        "proposal_version": proposal.proposal_version,
+    }

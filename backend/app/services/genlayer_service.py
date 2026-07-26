@@ -98,6 +98,7 @@ class GenLayerService:
         asset_classes:        dict,
         investor_profile:     dict,
         market_context:       dict,
+        stake_context:        dict,
     ) -> dict:
         """
         Return unsigned tx call data for evaluate_rebalancing.
@@ -116,6 +117,7 @@ class GenLayerService:
                 "asset_classes":      json.dumps(asset_classes),
                 "investor_profile":   json.dumps(investor_profile),
                 "market_context":     json.dumps(market_context),
+                "stake_context":      json.dumps(stake_context),
             },
         }
 

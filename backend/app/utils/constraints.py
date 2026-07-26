@@ -1,8 +1,8 @@
 """
-Portfolio constraint engine — mirrors the hard rules in the on-chain contract.
+Portfolio constraint engine — single source of truth for investment rules.
 """
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Any
 
 ILLIQUID_CLASSES = {"defi_protocols", "tokenised_rwa", "alternatives", "real_estate"}
 LIQUID_CLASSES   = {"stablecoins", "cash", "Cash", "fixed_income"}
@@ -34,6 +34,34 @@ class ConstraintViolation:
     message: str
     current_value: float
     limit: float
+
+
+RULES_VERSION = "2026-07-24"
+MIN_DIVERSIFICATION_CLASSES = 2
+
+RULES_PAYLOAD: dict[str, Any] = {
+    "version": RULES_VERSION,
+    "weight_sum": {"target": 100.0, "tolerance": 0.5},
+    "single_asset_max_pct": 70.0,
+    "single_class_max_pct": 80.0,
+    "min_liquidity_pct": 2.0,
+    "max_illiquid_pct": 40.0,
+    "min_asset_classes": MIN_DIVERSIFICATION_CLASSES,
+    "no_leverage": True,
+    "max_defi_protocol_pct": 15.0,
+    "liquid_classes": sorted(LIQUID_CLASSES),
+    "illiquid_classes": sorted(ILLIQUID_CLASSES),
+    "supported_asset_classes": [
+        "cryptocurrencies",
+        "tokenised_rwa",
+        "defi_protocols",
+        "equities",
+        "fixed_income",
+        "commodities",
+        "stablecoins",
+        "cash",
+    ],
+}
 
 
 def validate_portfolio_constraints(
@@ -98,11 +126,11 @@ def validate_portfolio_constraints(
 
     # Rule 6 — min 2 asset classes
     active_classes = {resolved[a] for a in allocations if allocations.get(a, 0) > 0}
-    if len(active_classes) < 2:
+    if len(active_classes) < MIN_DIVERSIFICATION_CLASSES:
         violations.append(ConstraintViolation(
             rule="MIN_DIVERSIFICATION",
-            message=f"Portfolio must span at least 2 asset classes (has {len(active_classes)})",
-            current_value=float(len(active_classes)), limit=2.0,
+            message=f"Portfolio must span at least {MIN_DIVERSIFICATION_CLASSES} asset classes (has {len(active_classes)})",
+            current_value=float(len(active_classes)), limit=float(MIN_DIVERSIFICATION_CLASSES),
         ))
 
     # Rule 7 — no leverage
@@ -124,3 +152,7 @@ def validate_portfolio_constraints(
             ))
 
     return violations
+
+
+def get_investment_rules() -> dict[str, Any]:
+    return RULES_PAYLOAD

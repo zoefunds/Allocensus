@@ -18,8 +18,8 @@ Every decision is traceable, reproducible, and audit-ready.
 | Service | URL |
 |---------|-----|
 | Frontend | https://allocensus.vercel.app |
-| Backend API | https://allocensus-api.fly.dev |
-| API Docs | https://allocensus-api.fly.dev/api/docs |
+| Backend API | https://allocensus-backend-zoe.fly.dev |
+| API Docs | https://allocensus-backend-zoe.fly.dev/api/docs |
 | Genlayer Explorer | https://explorer-studio.genlayer.com |
 
 ---
@@ -63,19 +63,25 @@ Every decision is traceable, reproducible, and audit-ready.
 | Network | Genlayer StudioNet |
 | Chain ID | 61999 |
 | RPC | `https://studio.genlayer.com/api` |
-| Contract Address | `0x2EDfB701Afe68259c7468b24ba0AAa7Ac24368cC` |
+| Contract Address | `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6` |
 | Consensus Main Contract | `0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575` |
 | Gas | Free (StudioNet has no gas fees) |
 
 ### Transaction Flow
 
 1. User creates a rebalancing proposal (frontend)
-2. Backend builds unsigned calldata via `evaluate_rebalancing(proposal_id, current_portfolio, proposed_portfolio, market_context)`
-3. Frontend signs with the user's encrypted keystore (password-derived — private key never leaves the browser)
-4. Transaction is sent to the **Consensus Main Contract** via `addTransaction(sender, contractAddress, numValidators=5, maxRotations=3, encodedCalldata)`
+2. Backend builds unsigned calldata via `evaluate_rebalancing(proposal_id, current_portfolio, proposed_portfolio, market_context, stake_context)`
+3. Frontend signs with the user's encrypted keystore (password-derived - private key never leaves the browser)
+4. Transaction is sent to the **Consensus Main Contract** via `addTransaction(sender, contractAddress, numValidators=5, maxRotations=3, encodedCalldata)` and includes a `1 GEN` payable stake
 5. 5 Genlayer validators independently run the intelligent contract (Python + web AI calls)
 6. Consensus result written on-chain — frontend polls `eth_getTransactionByHash` until `status: FINALIZED`
 7. Backend reads result via `gen_call` → `get_proposal(proposal_id)` view method
+
+### Stake Flow
+
+- Every rebalancing request requires exactly `1 GEN` to be staked from the user's wallet.
+- After the request is processed, the user can claim back `50%` of the stake.
+- The frontend now shows this requirement before submission and provides a claim flow on the proposal page.
 
 ### Security Constraint
 
@@ -201,7 +207,7 @@ Frontend available at `http://localhost:3000`
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Default: 60 |
 | `JWT_REFRESH_TOKEN_EXPIRE_DAYS` | Default: 7 |
 | `GENLAYER_RPC_URL` | `https://studio.genlayer.com/api` |
-| `GENLAYER_CONTRACT_ADDRESS` | `0x2EDfB701Afe68259c7468b24ba0AAa7Ac24368cC` |
+| `GENLAYER_CONTRACT_ADDRESS` | `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6` |
 | `WALLET_ENCRYPTION_KEY` | 64-char hex key for server-side wallet encryption |
 | `WALLET_PBKDF2_ITERATIONS` | Default: 100000 |
 | `SENDGRID_API_KEY` | For email verification (optional) |
@@ -211,11 +217,11 @@ Frontend available at `http://localhost:3000`
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Backend URL (e.g. `https://allocensus-api.fly.dev`) |
+| `NEXT_PUBLIC_API_URL` | Backend URL (e.g. `https://allocensus-backend-zoe.fly.dev`) |
 | `NEXT_PUBLIC_APP_URL` | Frontend URL |
 | `NEXT_PUBLIC_APP_NAME` | `Allocensus` |
 | `NEXT_PUBLIC_GENLAYER_RPC_URL` | `https://studio.genlayer.com/api` |
-| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `0x2EDfB701Afe68259c7468b24ba0AAa7Ac24368cC` |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `0x3FFd310A76C7caa09a3b30E4dbdDbADCbdFd69c6` |
 
 ---
 
@@ -257,19 +263,19 @@ cd backend
 fly deploy --remote-only
 ```
 
-Machine: 1 shared CPU, 512 MB RAM, London region (`lhr`), always-on (`auto_stop_machines = false`).
+Production backend: `allocensus-backend-zoe` on Fly.io with a managed PostgreSQL cluster attached.
 
 ### Frontend (Vercel)
 
 ```bash
 cd frontend
-npx vercel deploy --prod --yes
+vercel deploy --prod --yes --cwd frontend
 ```
 
 ### Database Migrations (production)
 
 ```bash
-flyctl ssh console --app allocensus-api --command "cd /app && alembic upgrade head"
+flyctl ssh console --app allocensus-backend-zoe --command 'sh -lc "cd /app && alembic upgrade head"'
 ```
 
 ---
@@ -281,6 +287,8 @@ flyctl ssh console --app allocensus-api --command "cd /app && alembic upgrade he
 **Genlayer calldata encoding** — Transactions use a custom binary format (not JSON). Map keys are length-prefixed with no type tag; values carry a type varint `(len << 3) | type`. Maps are sorted alphabetically. The encoded calldata is RLP-serialized as `[calldataBytes, false]` before being passed to `addTransaction` on the Consensus Main Contract.
 
 **Constraint checks** — 8 rules are enforced server-side before any proposal reaches Genlayer: concentration limits, asset class diversification, liquidity requirements, drift thresholds, and more. Violations block submission and are returned to the user with specific messages.
+
+**Stake requirement** — Every rebalance request requires exactly `1 GEN` staked from the user wallet. After processing, the user can claim back `50%` of the stake via the claim flow.
 
 **No gas fees** — Genlayer StudioNet is a gasless network. All transactions are free.
 

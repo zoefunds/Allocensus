@@ -72,7 +72,7 @@ export function useGenlayerTx(): UseGenlayerTxResult {
     try {
       // Step 1: fetch call data from backend
       const callDataRes = await rebalancingAPI.getCallData(proposalId);
-      const { call_data } = callDataRes.data;
+      const { call_data, rules } = callDataRes.data;
 
       // Step 2: encode calldata in Genlayer's binary format
       setStatus("awaiting_signature");
@@ -105,6 +105,7 @@ export function useGenlayerTx(): UseGenlayerTxResult {
       const txResponse = await wallet.sendTransaction({
         to:       CONSENSUS_MAIN_CONTRACT,
         data:     encodedCall,
+        value:    ethers.parseEther("1"),
         gasPrice: BigInt(0),
         gasLimit: BigInt(1_000_000),
       });
@@ -113,7 +114,13 @@ export function useGenlayerTx(): UseGenlayerTxResult {
       setTxHash(hash);
 
       // Step 5: record tx hash in backend
-      await rebalancingAPI.confirmTx(proposalId, hash);
+      const receipt = await txResponse.wait();
+      await rebalancingAPI.confirmTx(proposalId, {
+        tx_hash: hash,
+        wallet_address: wallet.address,
+        block_number: Number(receipt?.blockNumber ?? 0),
+        proposal_version: rules?.version ?? "unknown",
+      });
       setStatus("pending_consensus");
 
       // Step 6: poll until consensus

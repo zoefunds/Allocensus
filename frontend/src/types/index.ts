@@ -40,6 +40,9 @@ export interface Proposal {
   proposed_allocations: Record<string, number>;
   constraint_violations: ConstraintViolation[];
   genlayer_tx_hash: string | null;
+  tx_wallet_address?: string | null;
+  tx_block_number?: number | null;
+  proposal_version?: string | null;
   notes: string | null;
   created_at: string;
   rationale?: Rationale;

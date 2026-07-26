@@ -88,7 +88,7 @@ export function SubmitToGenlayerModal({ proposalId, onClose, onSuccess }: Props)
           </div>
           <div>
             <h2 className="text-lg font-bold">Submit to Genlayer</h2>
-            <p className="text-xs text-muted-foreground">AI validator consensus evaluation</p>
+            <p className="text-xs text-muted-foreground">AI validator consensus evaluation. This request requires exactly 1 GEN stake.</p>
           </div>
         </div>
 
@@ -157,6 +157,9 @@ export function SubmitToGenlayerModal({ proposalId, onClose, onSuccess }: Props)
             <p className="text-sm text-muted-foreground">
               Your session was refreshed. Enter your account password once to sign this transaction.
             </p>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-300">
+              You will be prompted to sign a transaction that stakes exactly 1 GEN before the rebalancing request is sent.
+            </div>
             <Input
               label="Account Password"
               type="password"

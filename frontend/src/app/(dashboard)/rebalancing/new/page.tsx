@@ -40,7 +40,9 @@ export default function NewProposalPage() {
   ]);
 
   const { data: res } = useQuery({ queryKey: ["portfolios"], queryFn: () => portfolioAPI.list() });
+  const { data: rulesRes } = useQuery({ queryKey: ["rebalancing-rules"], queryFn: () => rebalancingAPI.rules() });
   const portfolios: Portfolio[] = res?.data ?? [];
+  const rules = rulesRes?.data;
 
   const addRow = () =>
     setRows(r => [...r, { asset_class: "Equities", current_pct: "0", proposed_pct: "0" }]);
@@ -100,11 +102,31 @@ export default function NewProposalPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold">New Rebalancing Proposal</h1>
-          <p className="text-muted-foreground text-sm">Submit for AI-validation via Genlayer consensus</p>
+          <p className="text-muted-foreground text-sm">Submit for AI-validation via Genlayer consensus. A 1 GEN stake is required before requesting rebalancing.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        <Card>
+          <CardTitle className="mb-4">Stake Requirement</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Each rebalancing request requires you to sign and stake exactly <span className="text-emerald-400 font-semibold">1 GEN</span>.
+            After the request is processed, you can claim back <span className="text-emerald-400 font-semibold">50%</span> of that stake.
+          </p>
+        </Card>
+
+        {rules && (
+          <Card>
+            <CardTitle className="mb-4">Investment Rules</CardTitle>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>Version: <span className="font-mono text-emerald-400">{rules.version}</span></div>
+              <div>Min liquidity: <span className="font-mono text-emerald-400">{rules.min_liquidity_pct}%</span></div>
+              <div>Max single asset: <span className="font-mono text-emerald-400">{rules.single_asset_max_pct}%</span></div>
+              <div>Max illiquid: <span className="font-mono text-emerald-400">{rules.max_illiquid_pct}%</span></div>
+            </div>
+          </Card>
+        )}
+
         {/* Portfolio selection */}
         <Card>
           <CardTitle className="mb-4">Portfolio</CardTitle>

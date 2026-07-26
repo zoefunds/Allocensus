@@ -41,6 +41,9 @@ class ProposalResponse(BaseModel):
     proposed_allocations: Dict[str, Any]
     constraint_violations: List[ConstraintViolationOut]
     genlayer_tx_hash: Optional[str]
+    tx_wallet_address: Optional[str] = None
+    tx_block_number: Optional[int] = None
+    proposal_version: Optional[str] = None
     notes: Optional[str]
     created_at: datetime
     model_config = {"from_attributes": True}
@@ -60,3 +63,13 @@ class RationaleResponse(BaseModel):
     validator_consensus: Dict[str, Any]
     created_at: datetime
     model_config = {"from_attributes": True}
+
+
+class ProposalTxContext(BaseModel):
+    proposal_id: uuid.UUID
+    wallet_address: str
+    authenticated_user_id: uuid.UUID
+    tx_hash: str
+    block_number: int
+    timestamp: datetime
+    proposal_version: str
