@@ -36,15 +36,25 @@ export default function ProposalDetailPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["proposal", id],
     queryFn:  async () => {
-      const proposalRes = await rebalancingAPI.get(id);
-      const proposalData = proposalRes.data;
-      if (proposalData?.status === "pending_consensus" && proposalData?.genlayer_tx_hash) {
-        const pollRes = await rebalancingAPI.pollResult(id);
-        if (pollRes.data?.status !== "pending_consensus") {
-          return rebalancingAPI.get(id);
+      try {
+        const proposalRes = await rebalancingAPI.get(id);
+        const proposalData = proposalRes.data;
+        if (proposalData?.status === "pending_consensus" && proposalData?.genlayer_tx_hash) {
+          const pollRes = await rebalancingAPI.pollResult(id);
+          if (pollRes.data?.status !== "pending_consensus") {
+            return rebalancingAPI.get(id);
+          }
         }
+        return proposalRes;
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          const listRes = await rebalancingAPI.list();
+          const match = (listRes.data || []).find((proposal: { id?: string }) => proposal.id === id);
+          if (match) return { data: match };
+        }
+        throw err;
       }
-      return proposalRes;
     },
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
